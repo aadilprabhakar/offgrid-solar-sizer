@@ -1,0 +1,35 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.jwt_secret
+credentials*.json
+*oauth_creds*
+
+# claude local state
+.claude/settings.local.json
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# deps / build
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+
+# backups
+backups/
+tmp/
+*.bak
+.mise/
+CLAUDE.md
+.claude/
+CLAUDE.local.md

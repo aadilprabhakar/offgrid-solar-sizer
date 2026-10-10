@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Check which PV and battery combinations get a home fully off-grid, by season.">
+<title>Off-Grid Solar Sizer</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  tailwind.config = { theme: { extend: { gridTemplateColumns: { 24: 'repeat(24, minmax(0, 1fr))' } } } };
+</script>
+<style>
+  /* Light only. Tokens below feed the SVG charts, which are drawn from script. */
+  :root {
+    color-scheme: light;
+    --fg: #0f172a; --muted: #64748b; --surface: #ffffff; --load: #1e293b;
+    --good: #15803d; --good-bg: #dcfce7; --bad: #b91c1c;
+    --s-summer: #d97706; --s-monsoon: #2563eb; --s-winter: #64748b;
+  }
+  /* Slanted-line pattern, the same recipe as tailwindcss.com: 315deg hairlines at 5% black on a 10px tile. */
+  body { color: #0f172a; background-color: #ffffff; }
+  .hatch {
+    background-image: repeating-linear-gradient(315deg, rgba(0,0,0,.05) 0, rgba(0,0,0,.05) 1px, transparent 0, transparent 50%);
+    background-size: 10px 10px;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #64748b; }
+  svg .gl { stroke: #e2e8f0; stroke-width: 1; }
+  svg .axis { stroke: #64748b; stroke-width: 1; }
+</style>
+</head>
+<body>
+<div class="mx-auto grid min-h-screen max-w-[1280px] grid-cols-[12px_minmax(0,1fr)_12px] sm:grid-cols-[40px_minmax(0,1fr)_40px]">
+<div class="hatch border-x border-slate-200" aria-hidden="true"></div>
+<div class="grid min-w-0 content-start gap-4 bg-slate-50 px-4 py-6">
+  <header>
+    <h1 class="text-3xl font-bold tracking-tight">Off-Grid Solar Sizer</h1>
+    <p class="mt-1 max-w-prose text-slate-600">Set your load for each hour of the day, pick a season and move the PV and battery sliders. The model runs a 24-hour day: PV feeds the load first and the surplus charges the battery. It checks that the battery carries you through the night and repeats day after day, with no grid.</p>
+  </header>
+  <div class="hatch -mx-4 h-6 border-y border-slate-200" aria-hidden="true"></div>
+
+  <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Load by hour">
+    <div class="flex items-baseline justify-between gap-2">
+      <h3 class="text-lg font-semibold">Load by hour</h3>
+      <span class="font-mono text-xl font-medium tabular-nums"><span id="loadTotal"></span><small class="ml-1 text-xs text-slate-500">kWh per day</small></span>
+    </div>
+    <div id="hours" class="grid grid-cols-12 gap-1 md:grid-cols-24" style="touch-action:none" aria-label="24 hourly load slots"></div>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="grid w-32 gap-1.5"><label for="selFrom" class="text-xs font-semibold uppercase tracking-wider text-slate-500">From</label>
+        <select id="selFrom" class="rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base focus:outline-none focus:ring-2 focus:ring-sky-600"></select></div>
+      <div class="grid w-32 gap-1.5"><label for="selTo" class="text-xs font-semibold uppercase tracking-wider text-slate-500">To</label>
+        <select id="selTo" class="rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base focus:outline-none focus:ring-2 focus:ring-sky-600"></select></div>
+      <div class="grid w-32 gap-1.5"><label for="selW" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Load (W)</label>
+        <input type="number" id="selW" min="0" step="50" value="350" inputmode="numeric" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-600"></div>
+      <button type="button" id="apply" class="rounded-md bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-600 focus:ring-offset-2">Apply to selected hours</button>
+    </div>
+    <p id="loadHint" class="text-sm text-slate-500"></p>
+  </section>
+
+  <div class="grid items-start gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+    <section class="grid min-w-0 gap-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Inputs">
+      <fieldset class="grid gap-1.5">
+        <legend class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Season</legend>
+        <div id="season" class="grid grid-cols-3 divide-x divide-slate-300 overflow-hidden rounded-md border border-slate-300">
+          <label class="relative cursor-pointer"><input class="peer sr-only" type="radio" name="season" value="summer"><span class="block bg-slate-50 px-1 py-2 text-center font-semibold peer-checked:bg-sky-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-sky-600">Summer<em id="psh-summer" class="block font-mono text-[11px] font-normal not-italic opacity-80"></em></span></label>
+          <label class="relative cursor-pointer"><input class="peer sr-only" type="radio" name="season" value="monsoon" checked><span class="block bg-slate-50 px-1 py-2 text-center font-semibold peer-checked:bg-sky-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-sky-600">Monsoon<em id="psh-monsoon" class="block font-mono text-[11px] font-normal not-italic opacity-80"></em></span></label>
+          <label class="relative cursor-pointer"><input class="peer sr-only" type="radio" name="season" value="winter"><span class="block bg-slate-50 px-1 py-2 text-center font-semibold peer-checked:bg-sky-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-sky-600">Winter<em id="psh-winter" class="block font-mono text-[11px] font-normal not-italic opacity-80"></em></span></label>
+        </div>
+      </fieldset>
+
+      <div class="grid gap-1.5">
+        <div class="flex items-baseline justify-between gap-2"><label for="pv" class="text-xs font-semibold uppercase tracking-wider text-slate-500">PV capacity</label><span class="font-mono text-xl font-medium tabular-nums"><span id="pvVal"></span><small class="ml-1 text-xs text-slate-500">kWp</small></span></div>
+        <input type="range" id="pv" min="0.5" max="20" step="0.1" value="4" class="h-7 w-full accent-sky-700">
+      </div>
+
+      <div class="grid gap-1.5">
+        <div class="flex items-baseline justify-between gap-2"><label for="batt" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Battery capacity</label><span class="font-mono text-xl font-medium tabular-nums"><span id="battVal"></span><small class="ml-1 text-xs text-slate-500">kWh</small></span></div>
+        <input type="range" id="batt" min="1" max="40" step="0.1" value="9.6" class="h-7 w-full accent-sky-700">
+        <p class="text-sm text-slate-500">Nominal pack size. 2 × 48 V 100 Ah is about 9.6 kWh.</p>
+      </div>
+
+      <button type="button" id="preset" class="justify-self-start rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-sky-800 hover:border-sky-700">Use current setup (4 kWp, 9.6 kWh)</button>
+
+      <details>
+        <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wider text-slate-500">Assumptions</summary>
+        <div class="mt-3 grid gap-2.5 text-sm">
+          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="derate">System efficiency (%)</label><input type="number" id="derate" min="40" max="100" step="1" value="78" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
+          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="dod">Usable battery (%)</label><input type="number" id="dod" min="30" max="100" step="1" value="90" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
+          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="rte">Round-trip efficiency (%)</label><input type="number" id="rte" min="60" max="100" step="1" value="92" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
+          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="p-summer">Summer sun hours</label><input type="number" id="p-summer" min="1" max="8" step="0.1" value="6.1" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
+          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="p-monsoon">Monsoon sun hours</label><input type="number" id="p-monsoon" min="1" max="8" step="0.1" value="4.9" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
+          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="p-winter">Winter sun hours</label><input type="number" id="p-winter" min="1" max="8" step="0.1" value="5.5" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
+          <p class="text-sm text-slate-500">Sun hours are kWh per kWp per day on the panel plane before system losses. Defaults are for Ludhiana, Punjab: PVGIS yield for a south-facing 25° array, averaged over summer (Apr–Jun), monsoon (Jul–Sep) and winter (Nov–Feb), then divided by the 78% system efficiency. Heavy cloud and fog days are not modelled.</p>
+        </div>
+      </details>
+    </section>
+
+    <div class="grid min-w-0 gap-4">
+      <section id="verdict" class="grid gap-1 rounded-lg border border-slate-200 bg-white p-4" aria-live="polite">
+        <h2 id="vHead" class="text-3xl font-bold leading-tight"></h2>
+        <p id="vSub"></p>
+        <div id="vSeasons" class="mt-2 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2"></div>
+      </section>
+
+      <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Sizing for the selected season">
+        <h3 id="sizeTitle" class="text-lg font-semibold">What it takes in the selected season</h3>
+        <div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+          <div class="grid gap-0.5"><span id="sNeedB" class="font-mono text-lg tabular-nums"></span><span id="sNeedBl" class="text-xs text-slate-500"></span></div>
+          <div class="grid gap-0.5"><span id="sNeedP" class="font-mono text-lg tabular-nums"></span><span id="sNeedPl" class="text-xs text-slate-500"></span></div>
+          <div class="grid gap-0.5"><span id="sMin" class="font-mono text-lg tabular-nums"></span><span id="sMinl" class="text-xs text-slate-500">Battery low point</span></div>
+          <div class="grid gap-0.5"><span id="sSpill" class="font-mono text-lg tabular-nums"></span><span class="text-xs text-slate-500">PV spilled when battery is full</span></div>
+        </div>
+      </section>
+
+      <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Which combinations work">
+        <h3 class="text-lg font-semibold">Which PV and battery combinations get you off-grid</h3>
+        <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+          <span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-summer)"></i>Summer limit</span>
+          <span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-monsoon)"></i>Monsoon limit</span>
+          <span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-winter)"></i>Winter limit</span>
+          <span><i class="mr-1.5 inline-block h-3 w-3 rounded-sm border border-green-700 bg-green-100 align-middle"></i>Off-grid zone (selected season)</span>
+        </div>
+        <div class="overflow-x-auto"><svg id="frontier" viewBox="0 0 720 320" role="img" aria-label="Minimum battery size for each PV size, by season"></svg></div>
+        <p class="max-w-prose text-sm text-slate-500">Each line is the smallest battery that keeps you off-grid at that PV size. Anything above a line works for that season. To be off-grid all year, stay above the highest line. Click or drag on the chart to set both sliders.</p>
+      </section>
+
+      <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Hour by hour, all seasons">
+        <h3 id="dayTitle" class="text-lg font-semibold">Hour by hour, all three seasons</h3>
+        <div id="legDay" class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600"></div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">PV output and load (W)</p>
+        <div class="overflow-x-auto"><svg id="day" viewBox="0 0 720 230" role="img" aria-label="Hourly PV output for summer, monsoon and winter, with the load"></svg></div>
+        <p id="legBatt" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Battery charge</p>
+        <div class="overflow-x-auto"><svg id="dayB" viewBox="0 0 720 200" role="img" aria-label="Hourly battery charge for summer, monsoon and winter"></svg></div>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="hatch border-x border-slate-200" aria-hidden="true"></div>
+</div>
+
+<script>
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var SEASONS = {
+    summer:  { label: 'Summer',  sr: 5.6, ss: 19.0, psh: 6.1 },
+    monsoon: { label: 'Monsoon', sr: 5.9, ss: 18.9, psh: 4.9 },
+    winter:  { label: 'Winter',  sr: 7.0, ss: 17.8, psh: 5.5 }
+  };
+  var KEYS = ['summer', 'monsoon', 'winter'];
+  var X_MAX = 20, Y_MAX = 40;
+
+  // Hourly load in W (equals Wh in that hour). Starting point: 350 W by day, 500 W at night.
+  var LOADS = [], selFrom = 6, selTo = 18;
+  (function () { for (var h = 0; h < 24; h++) LOADS.push(h >= 6 && h < 18 ? 350 : 500); })();
+
+  function params() {
+    return {
+      loads: LOADS.slice(),
+      load: LOADS.reduce(function (a, b) { return a + b; }, 0),
+      pv: +$('pv').value, batt: +$('batt').value,
+      season: document.querySelector('input[name="season"]:checked').value,
+      derate: clamp(+$('derate').value, 40, 100) / 100,
+      dod: clamp(+$('dod').value, 30, 100) / 100,
+      rte: clamp(+$('rte').value, 60, 100) / 100,
+      psh: { summer: +$('p-summer').value || 1, monsoon: +$('p-monsoon').value || 1, winter: +$('p-winter').value || 1 }
+    };
+  }
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, isFinite(v) ? v : a)); }
+
+  function shape(s) {
+    var out = [], tot = 0, h, k, t;
+    for (h = 0; h < 24; h++) {
+      var a = 0;
+      for (k = 0; k < 6; k++) {
+        t = h + (k + 0.5) / 6;
+        if (t > s.sr && t < s.ss) a += Math.sin(Math.PI * (t - s.sr) / (s.ss - s.sr));
+      }
+      out.push(a); tot += a;
+    }
+    return out.map(function (v) { return v / tot; });
+  }
+  function loadProfile(p) { return p.loads; }
+
+  // Runs the daily cycle until the battery state repeats from one day to the next.
+  function sim(p, seasonKey, pvKw, battKwh) {
+    var s = SEASONS[seasonKey], sh = shape(s), ld = loadProfile(p);
+    var daily = pvKw * 1000 * p.derate * p.psh[seasonKey];
+    var pv = sh.map(function (v) { return v * daily; });
+    var cap = battKwh * 1000 * p.dod, eta = Math.sqrt(p.rte);
+    // % of the full nominal pack: the unusable reserve sits at the bottom, so empty usable reads (1 - dod).
+    var nom = function (x) { return ((1 - p.dod) + p.dod * x) * 100; };
+    var e = cap, day, h, res;
+    for (day = 0; day < 60; day++) {
+      var e0 = e, unmet = 0, spill = 0, direct = 0, soc = [], minE = e, viaB = 0;
+      for (h = 0; h < 24; h++) {
+        var net = pv[h] - ld[h];
+        direct += Math.min(pv[h], ld[h]);
+        if (net >= 0) {
+          var room = cap - e, ch = Math.min(net * eta, room);
+          e += ch; viaB += ch / eta; spill += net - ch / eta;
+        } else {
+          var need = -net, give = Math.min(need, e * eta);
+          e -= give / eta; unmet += need - give;
+        }
+        if (e < minE) minE = e;
+        soc.push(nom(cap > 0 ? e / cap : 0));
+      }
+      res = { pv: pv, load: ld, soc: soc, unmet: unmet, spill: spill, direct: direct, viaB: viaB, minSoc: nom(cap > 0 ? minE / cap : 0), drain: e0 - e };
+      if (Math.abs(e - e0) < 0.5) break;
+    }
+    res.shortfall = res.unmet + Math.max(0, res.drain);
+    res.ok = res.shortfall < 1;
+    res.gen = daily;
+    return res;
+  }
+
+  function minBatt(p, key, pvKw) {
+    if (!sim(p, key, pvKw, 80).ok) return null;
+    var lo = 0, hi = 80, i;
+    for (i = 0; i < 14; i++) {
+      var m = (lo + hi) / 2;
+      if (sim(p, key, pvKw, m).ok) hi = m; else lo = m;
+    }
+    return hi;
+  }
+  function minPv(p, key, battKwh) {
+    if (!sim(p, key, 60, battKwh).ok) return null;
+    var lo = 0, hi = 60, i;
+    for (i = 0; i < 14; i++) {
+      var m = (lo + hi) / 2;
+      if (sim(p, key, m, battKwh).ok) hi = m; else lo = m;
+    }
+    return hi;
+  }
+
+  var frontierCache = { key: '', data: null };
+  function frontier(p) {
+    var key = JSON.stringify([p.loads, p.derate, p.dod, p.rte, p.psh]);
+    if (frontierCache.key === key) return frontierCache.data;
+    var data = {};
+    KEYS.forEach(function (k) {
+      var pts = [], x;
+      for (x = 0.5; x <= X_MAX + 1e-9; x += 0.5) pts.push({ x: x, y: minBatt(p, k, x) });
+      data[k] = pts;
+    });
+    frontierCache = { key: key, data: data };
+    return data;
+  }
+
+  function f1(v) { return v.toFixed(1); }
+  function kwh(wh) { return f1(wh / 1000); }
+
+  var VBASE = 'grid gap-1 rounded-lg border p-4', VHEAD = 'text-3xl font-bold leading-tight';
+  function render() {
+    var p = params();
+    $('pvVal').textContent = f1(p.pv);
+    $('battVal').textContent = f1(p.batt);
+    $('loadTotal').textContent = kwh(p.load);
+    $('loadHint').textContent = 'Drag across the hour slots to select a range, or use From and To. Enter a load in W and apply it. Total ' +
+      Math.round(p.load).toLocaleString() + ' Wh per day, average ' + Math.round(p.load / 24) + ' W, peak ' + Math.max.apply(null, p.loads) + ' W.';
+    drawHours();
+    KEYS.forEach(function (k) { $('psh-' + k).textContent = p.psh[k].toFixed(1) + ' h'; });
+
+    var r = sim(p, p.season, p.pv, p.batt);
+    var S = SEASONS[p.season].label;
+    var v = $('verdict'), all = true, bad = [], good = [], html = '', res = {};
+    KEYS.forEach(function (k) {
+      var q = k === p.season ? r : sim(p, k, p.pv, p.batt);
+      res[k] = q;
+      if (q.ok) good.push(SEASONS[k].label); else { all = false; bad.push(SEASONS[k].label); }
+      html += '<div class="chip grid cursor-pointer gap-0.5 rounded-md border bg-white px-3 py-2 ' + (q.ok ? 'border-green-700' : 'border-red-700') + (k === p.season ? ' ring-2 ring-slate-900' : '') + '" data-k="' + k + '">' +
+        '<b class="text-sm font-semibold">' + SEASONS[k].label + '</b><span class="font-mono text-xs ' + (q.ok ? 'text-green-700' : 'text-red-700') + '">' +
+        (q.ok ? 'Off-grid, battery low ' + Math.round(q.minSoc) + '%' : 'Short ' + kwh(q.shortfall) + ' kWh/day') + '</span></div>';
+    });
+    $('vSeasons').innerHTML = html;
+    $('sizeTitle').textContent = 'What it takes in ' + S;
+    if (p.load <= 0) {
+      v.className = VBASE + ' border-slate-200 bg-white'; $('vHead').className = VHEAD + ' text-slate-900';
+      $('vHead').textContent = 'Set a load';
+      $('vSub').textContent = 'Enter a load for at least one hour of the day.';
+    } else {
+      v.className = VBASE + (all ? ' border-green-700 bg-green-50' : ' border-red-700 bg-red-50'); $('vHead').className = VHEAD + (all ? ' text-green-800' : ' text-red-800');
+      $('vHead').textContent = all ? 'Off-grid all year' : (good.length ? 'Not off-grid in ' + bad.join(' and ') : 'Not off-grid in any season');
+      $('vSub').textContent = r.ok
+        ? S + ': ' + kwh(p.load) + ' kWh per day is covered, and the battery refills by day.'
+        : S + ': short by ' + kwh(r.shortfall) + ' kWh per day (' + Math.round(r.shortfall / p.load * 100) + '% of the load) that would come from the grid.';
+    }
+
+    // stats
+    var nb = minBatt(p, p.season, p.pv), np = minPv(p, p.season, p.batt);
+    $('sNeedB').textContent = nb === null ? 'Not possible' : f1(nb) + ' kWh';
+    $('sNeedBl').textContent = nb === null ? 'PV too small for ' + S + ' at any battery size' : 'Battery needed in ' + S + ' at ' + f1(p.pv) + ' kWp';
+    $('sNeedP').textContent = np === null ? 'Not possible' : f1(np) + ' kWp';
+    $('sNeedPl').textContent = np === null ? 'Battery too small to cover the night' : 'PV needed in ' + S + ' with ' + f1(p.batt) + ' kWh';
+    var floor = Math.round((1 - p.dod) * 100);
+    $('sMin').textContent = Math.round(r.minSoc) + '%';
+    $('sMinl').textContent = 'Battery low point, % of the full ' + f1(p.batt) + ' kWh pack (reserve floor ' + floor + '%)';
+    $('legBatt').textContent = 'Battery charge, % of the full ' + f1(p.batt) + ' kWh pack';
+    $('sSpill').textContent = kwh(r.spill) + ' kWh';
+
+    drawFrontier(p, frontier(p), r.ok);
+    drawDay(p, res);
+    $('dayTitle').textContent = 'Hour by hour, all three seasons (' + kwh(p.load) + ' kWh used per day)';
+    $('legDay').innerHTML = KEYS.map(function (k) {
+      return '<span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-' + k + ')"></i>' + SEASONS[k].label + ': ' + kwh(res[k].gen) + ' kWh generated</span>';
+    }).join('') + '<span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--load)"></i>Load</span>';
+    save();
+  }
+
+  function drawFrontier(p, data, ok) {
+    var W = 720, H = 320, L = 46, R = 16, T = 12, B = 36, iw = W - L - R, ih = H - T - B;
+    var X = function (v) { return L + iw * v / X_MAX; };
+    var Y = function (v) { return T + ih * (1 - v / Y_MAX); };
+    var s = '', i;
+    for (i = 0; i <= 4; i++) {
+      var gy = i * 10, gx = i * 5;
+      s += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(gy) + '" y2="' + Y(gy) + '"/>';
+      s += '<text x="' + (L - 8) + '" y="' + (Y(gy) + 4) + '" text-anchor="end">' + gy + '</text>';
+      s += '<text x="' + X(gx) + '" y="' + (H - B + 16) + '" text-anchor="middle">' + gx + '</text>';
+    }
+    s += '<line class="axis" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(0) + '" y2="' + Y(0) + '"/>';
+    s += '<text x="' + (L + iw / 2) + '" y="' + (H - 4) + '" text-anchor="middle">PV capacity (kWp)</text>';
+    s += '<text transform="translate(12 ' + (T + ih / 2) + ') rotate(-90)" text-anchor="middle">Battery (kWh)</text>';
+
+    // feasible region for selected season
+    var sel = data[p.season].filter(function (d) { return d.y !== null; });
+    if (sel.length) {
+      var poly = 'M' + X(sel[0].x) + ' ' + Y(Math.min(Y_MAX, sel[0].y));
+      sel.forEach(function (d) { poly += ' L' + X(d.x) + ' ' + Y(Math.min(Y_MAX, d.y)); });
+      poly += ' L' + X(sel[sel.length - 1].x) + ' ' + Y(Y_MAX) + ' L' + X(sel[0].x) + ' ' + Y(Y_MAX) + ' Z';
+      s += '<path d="' + poly + '" fill="var(--good-bg)" stroke="none"/>';
+    }
+    // season lines
+    KEYS.forEach(function (k) {
+      var pts = data[k].filter(function (d) { return d.y !== null; });
+      if (!pts.length) return;
+      var d = pts.map(function (q, n) { return (n ? 'L' : 'M') + X(q.x) + ' ' + Y(Math.min(Y_MAX, q.y)); }).join(' ');
+      s += '<path d="' + d + '" fill="none" stroke="var(--s-' + k + ')" stroke-width="' + (k === p.season ? 3 : 1.5) + '" stroke-linejoin="round"/>';
+    });
+    // marker
+    var mx = X(clamp(p.pv, 0, X_MAX)), my = Y(clamp(p.batt, 0, Y_MAX));
+    s += '<circle cx="' + mx + '" cy="' + my + '" r="8" fill="' + (ok ? 'var(--good)' : 'var(--bad)') + '" stroke="var(--surface)" stroke-width="2.5"/>';
+    s += '<text x="' + Math.min(mx + 12, W - 90) + '" y="' + Math.max(my - 12, 22) + '" style="fill:var(--fg)">' + f1(p.pv) + ' kWp · ' + f1(p.batt) + ' kWh</text>';
+    $('frontier').innerHTML = s;
+    $('frontier')._geom = { W: W, H: H, L: L, R: R, T: T, B: B };
+  }
+
+  function niceMax(v) {
+    var mag = Math.pow(10, Math.floor(Math.log10(v))), n = v / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
+  }
+
+  // res holds one simulated day per season; the selected season is drawn heavier.
+  function drawDay(p, res) {
+    var W = 720, L = 52, R = 16, T = 12, B = 28, iw = W - L - R;
+    var X = function (h) { return L + iw * h / 24; };
+    var load = res[KEYS[0]].load, h, i, s;
+    var hourLabels = function (H, ih) {
+      var t = '';
+      for (var q = 0; q <= 24; q += 3) t += '<text x="' + X(q) + '" y="' + (T + ih + 16) + '" text-anchor="middle">' + (q < 10 ? '0' : '') + q + ':00</text>';
+      return t;
+    };
+    var stroke = function (k, wide) { return 'fill="none" stroke="var(--s-' + k + ')" stroke-width="' + (wide ? 3 : 1.75) + '" stroke-linejoin="round"'; };
+
+    // power chart
+    var H1 = 230, ih1 = H1 - T - B;
+    var peak = Math.max.apply(null, load);
+    KEYS.forEach(function (k) { peak = Math.max(peak, Math.max.apply(null, res[k].pv)); });
+    var maxW = niceMax(Math.max(1, peak) * 1.05);
+    var Y = function (v) { return T + ih1 * (1 - v / maxW); };
+    s = '';
+    for (i = 0; i <= 4; i++) {
+      var gv = maxW * i / 4;
+      s += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(gv) + '" y2="' + Y(gv) + '"/>';
+      s += '<text x="' + (L - 8) + '" y="' + (Y(gv) + 4) + '" text-anchor="end">' + Math.round(gv).toLocaleString() + '</text>';
+    }
+    s += hourLabels(H1, ih1);
+    KEYS.forEach(function (k) {
+      var d = '';
+      for (h = 0; h < 24; h++) d += (h ? 'L' : 'M') + X(h + 0.5) + ' ' + Y(res[k].pv[h]) + ' ';
+      s += '<path d="' + d + '" ' + stroke(k, k === p.season) + '/>';
+    });
+    var dl = '';
+    for (h = 0; h < 24; h++) dl += (h ? 'L' : 'M') + X(h) + ' ' + Y(load[h]) + ' L' + X(h + 1) + ' ' + Y(load[h]) + ' ';
+    s += '<path d="' + dl + '" fill="none" stroke="var(--load)" stroke-width="2.5" stroke-dasharray="6 3"/>';
+    s += '<line class="axis" x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih1) + '" y2="' + (T + ih1) + '"/>';
+    $('day').innerHTML = s;
+
+    // battery chart, % of the full nominal pack
+    var H2 = 200, ih2 = H2 - T - B;
+    var YS = function (v) { return T + ih2 * (1 - v / 100); };
+    s = '';
+    for (i = 0; i <= 4; i++) {
+      s += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + YS(i * 25) + '" y2="' + YS(i * 25) + '"/>';
+      s += '<text x="' + (L - 8) + '" y="' + (YS(i * 25) + 4) + '" text-anchor="end">' + (i * 25) + '%</text>';
+    }
+    s += hourLabels(H2, ih2);
+    var fl = (1 - p.dod) * 100;
+    if (fl > 0) {
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + YS(fl) + '" y2="' + YS(fl) + '" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 3"/>';
+      s += '<text x="' + (W - R - 4) + '" y="' + (YS(fl) - 4) + '" text-anchor="end">reserve floor ' + Math.round(fl) + '%</text>';
+    }
+    KEYS.forEach(function (k) {
+      var soc = res[k].soc, d = 'M' + X(0) + ' ' + YS(soc[23]);
+      for (h = 0; h < 24; h++) d += ' L' + X(h + 1) + ' ' + YS(soc[h]);
+      s += '<path d="' + d + '" ' + stroke(k, k === p.season) + '/>';
+    });
+    s += '<line class="axis" x1="' + L + '" x2="' + (W - R) + '" y1="' + (T + ih2) + '" y2="' + (T + ih2) + '"/>';
+    $('dayB').innerHTML = s;
+  }
+
+  // hourly load editor
+  function hh(n) { return (n < 10 ? '0' : '') + n; }
+  function short(w) { return w >= 1000 ? (w / 1000).toFixed(1) + 'k' : String(Math.round(w)); }
+  var HCELL = 'hcell grid grid-rows-[auto_56px_auto] gap-1 rounded border border-slate-200 bg-slate-50 pb-0.5 pt-1 text-center font-mono text-[10px] tabular-nums cursor-pointer select-none';
+  var HSEL = ' border-sky-700 bg-white ring-1 ring-sky-700';
+  var cells = [], hoursEl = $('hours'), anchor = null;
+  (function () {
+    var h, c, fromOpts = '', toOpts = '';
+    for (h = 0; h < 24; h++) {
+      c = document.createElement('div');
+      c.className = HCELL; c.setAttribute('data-h', h);
+      c.innerHTML = '<span class="text-slate-900"></span><span class="relative mx-1"><i class="absolute inset-x-0 bottom-0 rounded-t-sm bg-slate-700"></i></span><span class="text-slate-500">' + hh(h) + '</span>';
+      hoursEl.appendChild(c); cells.push(c);
+      fromOpts += '<option value="' + h + '">' + hh(h) + ':00</option>';
+    }
+    for (h = 1; h <= 24; h++) toOpts += '<option value="' + h + '">' + hh(h % 24) + ':00' + (h === 24 ? ' (end of day)' : '') + '</option>';
+    $('selFrom').innerHTML = fromOpts; $('selTo').innerHTML = toOpts;
+  })();
+  function drawHours() {
+    var mx = Math.max(1, Math.max.apply(null, LOADS)), h;
+    for (h = 0; h < 24; h++) {
+      var c = cells[h];
+      c.firstChild.textContent = short(LOADS[h]);
+      c.querySelector('i').style.height = (LOADS[h] / mx * 100) + '%';
+      c.className = HCELL + (h >= selFrom && h < selTo ? HSEL : '');
+    }
+    $('selFrom').value = String(selFrom); $('selTo').value = String(selTo);
+  }
+  function cellAt(x, y) {
+    var el = document.elementFromPoint(x, y);
+    el = el && el.closest ? el.closest('.hcell') : null;
+    return el ? +el.getAttribute('data-h') : null;
+  }
+  hoursEl.addEventListener('pointerdown', function (e) {
+    var h = cellAt(e.clientX, e.clientY); if (h === null) return;
+    anchor = h; selFrom = h; selTo = h + 1; $('selW').value = LOADS[h]; drawHours();
+  });
+  hoursEl.addEventListener('pointermove', function (e) {
+    if (anchor === null) return;
+    var h = cellAt(e.clientX, e.clientY); if (h === null) return;
+    selFrom = Math.min(anchor, h); selTo = Math.max(anchor, h) + 1; $('selW').value = LOADS[selFrom]; drawHours();
+  });
+  function endDrag() { anchor = null; }
+  hoursEl.addEventListener('pointerup', endDrag);
+  hoursEl.addEventListener('pointercancel', endDrag);
+  hoursEl.addEventListener('pointerleave', endDrag);
+  $('selFrom').addEventListener('change', function () {
+    selFrom = +$('selFrom').value; if (selTo <= selFrom) selTo = selFrom + 1; $('selW').value = LOADS[selFrom]; drawHours();
+  });
+  $('selTo').addEventListener('change', function () {
+    selTo = +$('selTo').value; if (selFrom >= selTo) selFrom = selTo - 1; $('selW').value = LOADS[selFrom]; drawHours();
+  });
+  $('apply').addEventListener('click', function () {
+    var w = Math.max(0, Math.round(+$('selW').value || 0)), h;
+    for (h = selFrom; h < selTo; h++) LOADS[h] = w;
+    render();
+  });
+
+  // click / drag on frontier chart sets both sliders
+  var dragging = false;
+  function pick(ev) {
+    var svg = $('frontier'), g = svg._geom; if (!g) return;
+    var rect = svg.getBoundingClientRect();
+    var px = (ev.clientX - rect.left) / rect.width * g.W, py = (ev.clientY - rect.top) / rect.height * g.H;
+    var iw = g.W - g.L - g.R, ih = g.H - g.T - g.B;
+    var pvv = clamp((px - g.L) / iw * X_MAX, 0.5, X_MAX), bv = clamp((1 - (py - g.T) / ih) * Y_MAX, 1, Y_MAX);
+    $('pv').value = (Math.round(pvv * 10) / 10).toFixed(1);
+    $('batt').value = (Math.round(bv * 10) / 10).toFixed(1);
+    render();
+  }
+  var fs = $('frontier');
+  fs.style.touchAction = 'none';
+  fs.style.cursor = 'crosshair';
+  fs.addEventListener('pointerdown', function (e) { dragging = true; try { fs.setPointerCapture(e.pointerId); } catch (x) {} pick(e); });
+  fs.addEventListener('pointermove', function (e) { if (dragging) pick(e); });
+  fs.addEventListener('pointerup', function () { dragging = false; });
+  fs.addEventListener('pointercancel', function () { dragging = false; });
+
+  $('vSeasons').addEventListener('click', function (e) {
+    var c = e.target.closest ? e.target.closest('.chip') : null; if (!c) return;
+    var rd = document.querySelector('input[name="season"][value="' + c.getAttribute('data-k') + '"]');
+    if (rd) { rd.checked = true; render(); }
+  });
+  $('preset').addEventListener('click', function () { $('pv').value = '4'; $('batt').value = '9.6'; render(); });
+  Array.prototype.forEach.call(document.querySelectorAll('input'), function (el) { el.addEventListener('input', render); });
+
+  // remember settings in this browser
+  var STORE = 'offgrid-sizer-v1', FIELDS = ['pv', 'batt', 'derate', 'dod', 'rte', 'p-summer', 'p-monsoon', 'p-winter'];
+  function save() {
+    try {
+      var o = { v: 2, loads: LOADS, season: params().season };
+      FIELDS.forEach(function (id) { o[id] = $(id).value; });
+      localStorage.setItem(STORE, JSON.stringify(o));
+    } catch (e) {}
+  }
+  function restore() {
+    try {
+      var o = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (!o) return;
+      if (Array.isArray(o.loads) && o.loads.length === 24) o.loads.forEach(function (v, i) { LOADS[i] = Math.max(0, +v || 0); });
+      FIELDS.forEach(function (id) {
+        if (id.indexOf('p-') === 0 && o.v !== 2) return; // older saves hold the previous sun-hour defaults
+        if (o[id] !== undefined) $(id).value = o[id];
+      });
+      var r = document.querySelector('input[name="season"][value="' + o.season + '"]');
+      if (r) r.checked = true;
+    } catch (e) {}
+  }
+  restore();
+  render();
+})();
+
+</script>
+</body>
+</html>
