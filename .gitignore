@@ -30,6 +30,15 @@ backups/
 tmp/
 *.bak
 .mise/
-CLAUDE.md
+# claude & agent files stay local, never pushed (also enforced by .githooks)
 .claude/
+CLAUDE.md
 CLAUDE.local.md
+.claude.json
+.gemini/
+GEMINI.md
+GEMINI.local.md
+AGENTS.md
+AGENTS.local.md
+.agents/
+.agy/

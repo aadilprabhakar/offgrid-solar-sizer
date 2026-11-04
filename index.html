@@ -3,142 +3,584 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Check which PV and battery combinations get a home fully off-grid, by season.">
 <title>Off-Grid Solar Sizer</title>
-<script src="https://cdn.tailwindcss.com/3.4.17"></script>
-<script>
-  tailwind.config = { theme: { extend: { gridTemplateColumns: { 24: 'repeat(24, minmax(0, 1fr))' } } } };
-</script>
+<!-- Built with Whiteprint 1.1.0 (css 7fa4b8ee3d, js 0bb664e1bb) by build.py. Edit the source and rebuild, or run build.py on this file to upgrade. -->
+<style data-whiteprint="1.1.0">
+/* Whiteprint 1.1.0
+   Green ink, ruled sheets, hatched charts, red pencil. Docs: DESIGN.md.
+   Every colour lives in the three token blocks below. No rule after them uses a literal colour.
+
+   Classes
+   Page      .sheet .head (.site) .title .lede .block .rev .stats .stat .cells .cell .c3-.c9 .h .meta .b
+   Text      .note .para .cap .tag (.ink .on) .stamp
+   Content   .tiles .tile .steps .step .k .choices .opt (.on) .panel (.frame) .cols .kv .run .callout (.plain)
+   Data      .tw table(.num) .hbars .hbar (.on) .legend .sw .sw-* .chart
+   Controls  .btn (.on .warn) .btns .seg .form .field .check .out
+   Moving    .nav .grp .gh .rows .links details(.sm) .fig pre
+   Columns   .n2-.n6 on .stats .tiles .steps
+   SVG       fills .f-* strokes .k-* text .t-* marks .pt .hit .halo pattern parts .p-*   */
+
+:root {
+  color-scheme: light;
+  /* Colour tokens, light values. Dark values repeat twice below; keep the two dark blocks identical. */
+  --bg: #FBFEFC;       /* paper: page and sheet background */
+  --fg: #0A7A3F;       /* ink: all text under 24px */
+  --fg2: #2B7350;      /* secondary ink: captions, labels, axis text */
+  --vivid: #00A94F;    /* large headings and values, frames, fills, hatches, dots. Never small text */
+  --on-vivid: #03291A; /* text on vivid fills */
+  --rule: #A3DDB9;     /* hairlines inside cells, tile and table dividers */
+  --grid: #E0F6E8;     /* 20px background grid behind the sheet */
+  --gridline: #D5F2E0; /* chart grid lines */
+  --pencil: #C4201B;      /* red pencil: warnings, limits, status, focus */
+  --on-pencil: #FBFEFC;   /* text on solid red */
+  --tip-bg: #0A7A3F;   /* chart tooltip background */
+  --tip-fg: #FFFFFF;   /* chart tooltip text */
+
+  /* Type */
+  --font-cond: "DIN Condensed", "Arial Narrow", Impact, sans-serif;
+  --font-din: "DIN Alternate", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: Menlo, ui-monospace, monospace;
+
+  /* Space and rules */
+  --page-y: 24px;
+  --cell-x: 24px;
+  --cell-top: 16px;
+  --cell-bot: 22px;
+  --gap: 10px;
+  --frame: 2.5px;
+  --divide: 1.5px;
+  --hair: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0A1A12;
+    --fg: #2EE082;
+    --fg2: #A6DEBF;
+    --vivid: #2EE082;
+    --on-vivid: #0A1A12;
+    --rule: #26573D;
+    --grid: #11261A;
+    --gridline: #1C3A29;
+    --pencil: #FF8A7A;
+    --on-pencil: #0A1A12;
+    --tip-bg: #2EE082;
+    --tip-fg: #0A1A12;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0A1A12;
+  --fg: #2EE082;
+  --fg2: #A6DEBF;
+  --vivid: #2EE082;
+  --on-vivid: #0A1A12;
+  --rule: #26573D;
+  --grid: #11261A;
+  --gridline: #1C3A29;
+  --pencil: #FF8A7A;
+  --on-pencil: #0A1A12;
+  --tip-bg: #2EE082;
+  --tip-fg: #0A1A12;
+}
+body { background: var(--bg); color: var(--fg); }
+/* end of tokens */
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font: 400 15px/1.5 var(--font-body);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 20px 20px;
+  padding-block: var(--page-y);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 641px) {
+  body {
+    padding-left: max(24px, env(safe-area-inset-left, 0px));
+    padding-right: max(24px, env(safe-area-inset-right, 0px));
+  }
+}
+@media (max-width: 640px) { :root { --page-y: 16px; } }
+h1, h2, h3, h4, p, figure, dl, dd { margin: 0; }
+a { color: inherit; }
+strong { font-weight: 700; }
+img { max-width: 100%; height: auto; }
+hr { border: 0; border-top: var(--hair) solid var(--rule); margin: 12px 0; }
+:focus-visible { outline: 2px solid var(--pencil); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+/* ---------- Headings ---------- */
+h1 {
+  font: 400 clamp(58px, 9vw, 112px)/.9 var(--font-cond);
+  text-transform: uppercase; letter-spacing: .005em; color: var(--vivid); overflow-wrap: anywhere;
+}
+h2 {
+  font: 400 clamp(25px, 2.4vw, 29px)/1.05 var(--font-cond);
+  text-transform: uppercase; letter-spacing: .01em; color: var(--vivid); text-wrap: balance; overflow-wrap: anywhere;
+}
+h3 { font: 400 20px/1.15 var(--font-cond); text-transform: uppercase; letter-spacing: .01em; color: var(--fg); }
+h4 { font: 400 16px/1.25 var(--font-din); color: var(--fg); }
+
+/* ---------- Sheet and masthead ---------- */
+.sheet { max-width: 1180px; margin-inline: auto; background: var(--bg); border: var(--frame) solid var(--vivid); min-width: 0; }
+.head { --block-w: 300px; display: grid; grid-template-columns: minmax(0, 1fr) var(--block-w); border-bottom: var(--frame) solid var(--vivid); }
+.title { padding: 22px var(--cell-x) 18px; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+.lede { font-size: clamp(17px, 1.6vw, 19px); line-height: 1.35; padding-top: 8px; max-width: 52ch; }
+.head.solo { grid-template-columns: minmax(0, 1fr); }
+.title > .meta { margin-bottom: 12px; }
+.head.site { --block-w: 280px; }
+.head.site .title { padding-bottom: 12px; }
+.head.site h1 { font-size: clamp(72px, 12.5vw, 148px); }
+.head.site .title p { font-size: 16px; padding-top: 2px; }
+
+.block { display: grid; font-size: 14px; line-height: 1.3; border-left: var(--divide) solid var(--vivid); }
+.block > div { padding: 7px 12px 8px; border-bottom: var(--hair) solid var(--rule); min-width: 0; }
+.block > div:last-child { border-bottom: 0; }
+.block small { display: block; font-size: 11.5px; color: var(--fg2); padding-bottom: 1px; }
+.block strong { font: 400 16px/1.2 var(--font-din); }
+.block .rev { color: var(--pencil); }
+
+/* ---------- Key figures ---------- */
+.n2 { --n: 2; } .n3 { --n: 3; } .n4 { --n: 4; } .n5 { --n: 5; } .n6 { --n: 6; }
+.stats { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: var(--hair); background: var(--rule); border-bottom: var(--frame) solid var(--vivid); }
+.stat { padding: 12px 18px 14px; background: var(--bg); min-width: 0; }
+.stat:first-child { padding-left: var(--cell-x); }
+.stat b { display: block; font: 400 clamp(38px, 4.8vw, 58px)/1 var(--font-din); letter-spacing: -.015em; color: var(--vivid); overflow-wrap: anywhere; }
+.stat span { display: block; font-size: 13.5px; line-height: 1.3; color: var(--fg2); }
+
+/* ---------- 12-column cells ---------- */
+.cells { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--divide); background: var(--vivid); }
+.cell { grid-column: span 12; background: var(--bg); padding: var(--cell-top) var(--cell-x) var(--cell-bot); min-width: 0; display: flex; flex-direction: column; gap: var(--gap); }
+.c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c6 { grid-column: span 6; }
+.c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c9 { grid-column: span 9; }
+.b { min-width: 0; }
+.b > * + * { margin-top: 10px; }
+.b ul, .callout ul { margin: 0; padding-left: 20px; font-size: 14.5px; }
+.b ul li + li, .callout ul li + li { margin-top: 4px; }
+.h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; justify-content: space-between; }
+
+/* ---------- Small text ---------- */
+.meta { font-size: 13px; color: var(--fg2); }
+.note, .para, .cap { font-size: 14.5px; max-width: 72ch; }
+.note { color: var(--fg2); }
+.cap { font-weight: 600; padding-bottom: 8px; }
+.para { padding-top: 12px; }
+code { font: 500 .9em/1 var(--font-mono); overflow-wrap: anywhere; }
+
+/* ---------- Badges and stamps ---------- */
+.tag { display: inline-block; font-size: 13px; color: var(--pencil); font-weight: 500; border: 1.2px solid var(--pencil); padding: 0 6px; }
+.tag.ink { color: var(--fg); border-color: var(--vivid); }
+.tag.on { color: var(--on-vivid); background: var(--vivid); border-color: var(--vivid); }
+.stamp { display: inline-block; font: 400 19px/1 var(--font-cond); text-transform: uppercase; letter-spacing: .04em; color: var(--pencil); border: 2px solid var(--pencil); padding: 5px 9px 3px; }
+
+/* ---------- Joined tiles and steps ---------- */
+.tiles, .steps { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: var(--hair); background: var(--rule); border: var(--hair) solid var(--rule); }
+.steps:not(.n2):not(.n3):not(.n4):not(.n5):not(.n6) { --n: 3; }
+.tile, .step { padding: 8px 12px 10px; background: var(--bg); min-width: 0; }
+.tile b { display: block; font: 400 26px/1.1 var(--font-din); color: var(--vivid); overflow-wrap: anywhere; }
+.tile span { display: block; font-size: 13.5px; line-height: 1.25; color: var(--fg2); }
+.step { display: flex; flex-direction: column; gap: 2px; }
+.step .k { font-size: 13px; color: var(--fg2); }
+.step b { font: 400 16.5px/1.25 var(--font-din); }
+
+/* ---------- Callouts ---------- */
+.callout { margin: 12px 0 0; padding: 10px 14px 10px 44px; border: var(--divide) solid var(--pencil); color: var(--pencil); font-size: 15.5px; position: relative; }
+.callout::before { content: "!"; position: absolute; left: 12px; top: 10px; width: 22px; height: 20px; background: var(--pencil); color: var(--on-pencil); font: 400 14px/22px var(--font-din); text-align: center; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.callout.plain { padding-left: 14px; border-color: var(--vivid); color: var(--fg); }
+.callout.plain::before { content: none; }
+
+/* ---------- Chosen and rejected options ---------- */
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: var(--gap); }
+.opt { border: var(--hair) solid var(--rule); padding: 10px 12px 12px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.opt b { font: 400 clamp(44px, 5vw, 60px)/1 var(--font-din); color: var(--vivid); overflow-wrap: anywhere; }
+.opt span { font-size: 13.5px; line-height: 1.3; }
+.opt .k { font-weight: 600; }
+.opt.on { background: var(--vivid); border-color: var(--vivid); color: var(--on-vivid); }
+.opt.on b { color: var(--on-vivid); }
+
+/* ---------- Panels ---------- */
+.panel { border: var(--hair) solid var(--rule); padding: 10px 12px 12px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.panel.frame { border: var(--divide) solid var(--vivid); }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--gap); }
+
+/* ---------- Key and value list ---------- */
+.kv { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 0 16px; font-size: 14.5px; }
+.kv dt { color: var(--fg2); padding: 5px 0; border-bottom: var(--hair) solid var(--rule); }
+.kv dd { padding: 5px 0; border-bottom: var(--hair) solid var(--rule); min-width: 0; }
+.kv dt:last-of-type, .kv dd:last-of-type { border-bottom: 0; }
+
+/* ---------- Numbered runbook steps ---------- */
+.run { list-style: none; margin: 0; padding: 0; counter-reset: run; font-size: 14.5px; }
+.run > li { counter-increment: run; display: grid; grid-template-columns: 34px minmax(0, 1fr); padding: 7px 0; border-bottom: var(--hair) solid var(--rule); }
+.run > li:last-child { border-bottom: 0; }
+.run > li::before { content: counter(run); font: 400 26px/1 var(--font-din); color: var(--vivid); }
+
+/* ---------- Tables ---------- */
+.tw { overflow-x: auto; }
+.tw + .para + .tw { margin-top: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; text-align: left; }
+th { font: 400 14px/1.2 var(--font-din); padding: 6px 14px 6px 0; border-bottom: var(--divide) solid var(--vivid); }
+td { padding: 6px 14px 6px 0; border-bottom: var(--hair) solid var(--rule); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { min-width: 10ch; }
+td:last-child, th:last-child { padding-right: 0; }
+th[scope="row"] { font: 400 14.5px/1.5 var(--font-body); width: 34%; padding-top: 6px; border-bottom: var(--hair) solid var(--rule); }
+tr:last-child th[scope="row"] { border-bottom: 0; }
+table.num { white-space: nowrap; }
+table.num th:not(:first-child), table.num td:not(:first-child) { text-align: right; }
+
+/* ---------- CSS bars ---------- */
+.hbars { padding-bottom: 8px; }
+.hbar { display: grid; grid-template-columns: minmax(96px, 140px) minmax(0, 1fr); gap: 12px; align-items: center; padding: 3px 0; font-size: 14px; }
+.hbar > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hbar i { display: block; height: 22px; width: calc((100% - 56px) * var(--v, 1)); border: var(--hair) solid var(--vivid); background: repeating-linear-gradient(135deg, var(--vivid) 0 2px, var(--bg) 2px 6px); }
+.hbar.on i { background: var(--vivid); }
+.hbar b { font: 400 19px/1 var(--font-din); }
+
+/* ---------- Legends ---------- */
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13.5px; padding-top: 8px; }
+.legend > span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { display: inline-block; width: 22px; height: 13px; flex: none; border: var(--hair) solid var(--vivid); }
+.sw-solid { background: var(--vivid); }
+.sw-diag { background: repeating-linear-gradient(135deg, var(--vivid) 0 2px, var(--bg) 2px 5px); }
+.sw-lite { background: repeating-linear-gradient(135deg, var(--vivid) 0 1px, var(--bg) 1px 6px); }
+.sw-dots { background: radial-gradient(circle, var(--vivid) 1.2px, transparent 1.4px) 0 0/5px 5px var(--bg); }
+.sw-empty { background: var(--bg); }
+.sw-pencil { background: var(--pencil); border-color: var(--pencil); }
+.sw-pdiag { background: repeating-linear-gradient(45deg, var(--pencil) 0 2px, var(--bg) 2px 5px); border-color: var(--pencil); }
+.sw-plite { background: repeating-linear-gradient(45deg, var(--pencil) 0 1px, var(--bg) 1px 6px); border-color: var(--pencil); }
+.sw-hollow { width: 13px; border-radius: 50%; background: var(--bg); }
+.sw-dot { width: 13px; border-radius: 50%; background: var(--vivid); }
+
+/* ---------- Charts and inline SVG. All colours resolve from tokens, so a theme change repaints with no redraw. ---------- */
+.chart { width: 100%; min-width: 0; overflow-x: auto; }
+.chart svg { display: block; }
+svg text { font-family: var(--font-body); }
+.f-solid { fill: var(--vivid); }
+.f-diag { fill: url(#wp-diag); }
+.f-lite { fill: url(#wp-lite); }
+.f-dots { fill: url(#wp-dots); }
+.f-empty { fill: var(--bg); }
+.f-pencil { fill: var(--pencil); }
+.f-pdiag { fill: url(#wp-pdiag); }
+.f-plite { fill: url(#wp-plite); }
+.f-none { fill: none; }
+.k-vivid { stroke: var(--vivid); }
+.k-ink { stroke: var(--fg); }
+.k-grid { stroke: var(--gridline); }
+.k-pencil { stroke: var(--pencil); }
+.k-limit { stroke: var(--pencil); stroke-width: 1.5; stroke-dasharray: 6 3; }
+.t-ink { fill: var(--fg); }
+.t-mut { fill: var(--fg2); }
+.t-pencil { fill: var(--pencil); }
+.t-on { fill: var(--on-vivid); }
+.halo { paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; font-weight: 600; }
+.tip-bg { fill: var(--tip-bg); }
+.tip-fg { fill: var(--tip-fg); }
+.p-bg { fill: var(--bg); }
+.p-ln { stroke: var(--vivid); }
+.p-dot { fill: var(--vivid); }
+.p-pn { stroke: var(--pencil); }
+.hit { fill: var(--bg); fill-opacity: 0; pointer-events: all; }
+.pt { cursor: default; }
+.pt:focus { outline: none; }
+.pt:focus-visible { outline: none; stroke: var(--pencil); stroke-width: 3px; }
+
+/* ---------- Buttons ---------- */
+.btn { display: inline-block; font: 400 15px/1.2 var(--font-din); color: var(--fg); background: var(--bg); border: var(--divide) solid var(--vivid); border-radius: 0; padding: 9px 14px; min-height: 40px; cursor: pointer; text-decoration: none; }
+.btn:hover, .btn.on, .btn[aria-pressed="true"], .btn[aria-current] { background: var(--vivid); color: var(--on-vivid); }
+.btn.warn { color: var(--pencil); border-color: var(--pencil); }
+.btn.warn:hover { background: var(--pencil); color: var(--on-pencil); }
+.btn:disabled, .btn[aria-disabled="true"] { color: var(--fg2); background: var(--bg); border: var(--divide) dashed var(--rule); cursor: not-allowed; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; flex-wrap: wrap; }
+.seg .btn { margin: 0 -1.5px -1.5px 0; }
+.seg .btn:focus-visible { position: relative; z-index: 1; }
+
+/* ---------- Form controls ---------- */
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; align-items: start; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > label, .field > .lab { font-size: 13.5px; color: var(--fg2); }
+.field small { font-size: 13px; color: var(--fg2); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea {
+  width: 100%; min-width: 0; min-height: 40px; font: 400 15px/1.3 var(--font-body); color: var(--fg); background: var(--bg);
+  border: var(--divide) solid var(--vivid); border-radius: 0; padding: 8px 10px;
+}
+input::placeholder, textarea::placeholder { color: var(--fg2); opacity: 1; }
+input:disabled, select:disabled, textarea:disabled { color: var(--fg2); border: var(--divide) dashed var(--rule); }
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--pencil); }
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--vivid); }
+input[type="range"] { width: 100%; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14.5px; }
+.check input { width: 18px; height: 18px; margin: 0; flex: none; }
+.out { font: 400 26px/1.1 var(--font-din); color: var(--vivid); }
+.err { font-size: 13px; color: var(--pencil); }
+
+/* ---------- Code blocks ---------- */
+pre { margin: 0; padding: 10px 12px; border: var(--hair) solid var(--rule); overflow-x: auto; font: 500 13px/1.45 var(--font-mono); }
+pre code { font: inherit; overflow-wrap: normal; }
+kbd { font: 500 .9em/1 var(--font-mono); border: var(--hair) solid var(--vivid); padding: 1px 4px; }
+
+/* ---------- Navigation ---------- */
+.nav { display: flex; flex-wrap: wrap; gap: 1px; background: var(--rule); border-bottom: var(--divide) solid var(--vivid); }
+.nav a { flex: 1 1 auto; background: var(--bg); padding: 8px 14px; font: 400 15px/1.2 var(--font-din); text-decoration: none; text-align: center; }
+.nav a:hover, .nav a[aria-current] { background: var(--vivid); color: var(--on-vivid); }
+.nav a:focus-visible { outline-offset: -3px; }
+.nav a:hover:focus-visible, .nav a[aria-current]:focus-visible { outline-color: var(--on-vivid); }
+
+/* ---------- Disclosure ---------- */
+summary { cursor: pointer; font: 400 25px/1.1 var(--font-cond); text-transform: uppercase; letter-spacing: .01em; color: var(--vivid); }
+details .tw { margin-top: 10px; }
+details.sm summary { font: 400 16px/1.25 var(--font-din); text-transform: none; letter-spacing: 0; color: var(--fg); }
+details.sm > :not(summary) { margin-top: 6px; }
+
+/* ---------- Index, or drawing register ---------- */
+.grp { display: grid; grid-template-columns: 200px minmax(0, 1fr); border-bottom: var(--divide) solid var(--vivid); }
+.grp:last-child { border-bottom: 0; }
+.gh { padding: 12px 16px 14px var(--cell-x); border-right: var(--divide) solid var(--vivid); min-width: 0; }
+.gh h2 { font-size: 30px; line-height: 1; text-wrap: wrap; }
+.gh span { display: block; font-size: 13px; color: var(--fg2); }
+.rows, .links { list-style: none; margin: 0; padding: 0; }
+.rows li + li, .links li + li { border-top: var(--hair) solid var(--rule); }
+.rows a { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 2px 20px; padding: 9px var(--cell-x) 10px 18px; text-decoration: none; align-items: baseline; transition: background-color .1s, color .1s; }
+.rows b { font: 400 19px/1.25 var(--font-din); }
+.rows span { font-size: 14.5px; color: var(--fg2); line-height: 1.35; }
+.links a { display: block; padding: 6px 4px; text-decoration: none; font: 400 16px/1.25 var(--font-din); }
+.rows a:hover, .links a:hover { background: var(--vivid); color: var(--on-vivid); }
+.rows a:hover span, .rows a:hover b { color: var(--on-vivid); }
+.rows a:focus-visible, .links a:focus-visible { outline-offset: -3px; }
+.rows a:hover:focus-visible, .links a:hover:focus-visible { outline-color: var(--on-vivid); }
+
+/* ---------- Figures: illustrations, photos and floor plans keep their own colours ---------- */
+.fig { border: var(--hair) solid var(--rule); min-width: 0; }
+.fig > .art { overflow-x: auto; }
+.fig img, .fig > .art > svg { display: block; max-width: 100%; height: auto; }
+.fig figcaption { padding: 6px 12px; font-size: 13.5px; color: var(--fg2); border-top: var(--hair) solid var(--rule); }
+
+/* ---------- Narrow layouts ---------- */
+@media (max-width: 860px) {
+  :root { --cell-x: 14px; --cell-top: 14px; --cell-bot: 18px; }
+  .cells { grid-template-columns: minmax(0, 1fr); }
+  .cell, .c3, .c4, .c5, .c6, .c7, .c8, .c9 { grid-column: 1; }
+  .head { grid-template-columns: minmax(0, 1fr); }
+  .title { padding: 16px var(--cell-x) 14px; }
+  .head.site .title { padding: 18px var(--cell-x) 10px; }
+  .block { border-left: 0; border-top: var(--divide) solid var(--vivid); grid-template-columns: 1fr 1fr; }
+  .block > div:nth-child(odd):not(:last-child) { border-right: var(--hair) solid var(--rule); }
+  .block > div:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+  .block > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .stats, .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat, .stat:first-child { padding: 10px var(--cell-x) 12px; }
+  .stat:last-child:nth-child(odd), .tile:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .steps { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .grp { grid-template-columns: minmax(0, 1fr); }
+  .gh { padding: 10px var(--cell-x) 8px; border-right: 0; border-bottom: var(--hair) solid var(--vivid); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .rows a { grid-template-columns: minmax(0, 1fr); padding: 9px var(--cell-x) 10px; }
+}
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px; }
+  .btn { min-height: 44px; }
+}
+</style>
 <style>
-  /* Light only. Tokens below feed the SVG charts, which are drawn from script. */
+  /* Page-level aliases. Every value is a system token, so the charts follow the theme with no redraw. */
   :root {
-    color-scheme: light;
-    --fg: #0f172a; --muted: #64748b; --surface: #ffffff; --load: #1e293b;
-    --good: #15803d; --good-bg: #dcfce7; --bad: #b91c1c;
-    --s-summer: #d97706; --s-monsoon: #2563eb; --s-winter: #64748b;
+    --muted: var(--fg2); --load: var(--fg);
+    --good: var(--vivid); --bad: var(--pencil); --surface: var(--bg); --good-bg: var(--vivid);
+    --s-summer: var(--vivid); --s-monsoon: var(--fg); --s-winter: var(--fg2);
   }
-  /* Slanted-line pattern, the same recipe as tailwindcss.com: 315deg hairlines at 5% black on a 10px tile. */
-  body { color: #0f172a; background-color: #ffffff; }
-  .hatch {
-    background-image: repeating-linear-gradient(315deg, rgba(0,0,0,.05) 0, rgba(0,0,0,.05) 1px, transparent 0, transparent 50%);
-    background-size: 10px 10px;
-  }
-  svg { display: block; width: 100%; height: auto; }
-  svg text { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #64748b; }
-  svg .gl { stroke: #e2e8f0; stroke-width: 1; }
-  svg .axis { stroke: #64748b; stroke-width: 1; }
+  .sec { display: grid; gap: 14px; min-width: 0; align-content: start; }
+  .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .big { font: 400 26px/1.1 var(--font-din); color: var(--vivid); }
+  .big small { font: 400 13px/1 var(--font-body); color: var(--fg2); margin-left: 4px; }
+  .lab { font-size: 13.5px; color: var(--fg2); }
+  .hint { font-size: 14px; color: var(--fg2); }
+  #hours { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; touch-action: none; }
+  @media (min-width: 768px) { #hours { grid-template-columns: repeat(24, minmax(0, 1fr)); } }
+  .hcell { display: grid; grid-template-rows: auto 56px auto; gap: 4px; border: 1px solid var(--rule); padding: 4px 0 2px; text-align: center; font: 400 11px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; cursor: pointer; user-select: none; color: var(--fg); }
+  .hcell.sel { border: 2px solid var(--vivid); padding: 3px 0 1px; background: var(--bg); }
+  .hcell .hb { position: relative; margin: 0 4px; }
+  .hcell .hb i { position: absolute; left: 0; right: 0; bottom: 0; background: var(--vivid); }
+  .hcell .hl { color: var(--fg2); }
+  .ctl { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+  .ctl .field { width: 128px; }
+  .split { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: var(--divide); background: var(--vivid); border-top: var(--divide) solid var(--vivid); }
+  .split > .cell, .stack > .cell { grid-column: auto; }
+  .stack { display: grid; gap: var(--divide); background: var(--vivid); align-content: start; }
+  @media (max-width: 860px) { .split { grid-template-columns: minmax(0, 1fr); } }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: 6px; font-size: 13.5px; color: var(--fg2); }
+  #season { display: grid; grid-template-columns: repeat(3, 1fr); border: var(--divide) solid var(--vivid); }
+  #season label { position: relative; cursor: pointer; display: block; }
+  #season label + label { border-left: var(--divide) solid var(--vivid); }
+  #season input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  #season span { display: block; padding: 8px 4px; text-align: center; font: 400 16px/1.2 var(--font-din); }
+  #season em { display: block; font: 400 12px/1.3 var(--font-mono); font-style: normal; }
+  #season input:checked + span { background: var(--vivid); color: var(--on-vivid); }
+  #season input:focus-visible + span { outline: 2px solid var(--pencil); outline-offset: -4px; }
+  .assume { display: grid; gap: 10px; }
+  .arow { display: grid; grid-template-columns: 1fr 96px; align-items: center; gap: 8px; font-size: 14.5px; }
+  .verdict { display: grid; gap: 4px; }
+  .verdict.ok .vhead { color: var(--vivid); }
+  .verdict.no .vhead { color: var(--pencil); }
+  .verdict.neutral .vhead { color: var(--fg); }
+  .vhead { font: 400 clamp(34px, 4.6vw, 48px)/1 var(--font-cond); text-transform: uppercase; }
+  .vseasons, .sizes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+  .sizes { gap: 16px; margin-top: 0; }
+  .chip { display: grid; gap: 2px; border: var(--hair) solid var(--rule); padding: 8px 12px; cursor: pointer; background: var(--bg); }
+  .chip.ok { border: var(--divide) solid var(--vivid); }
+  .chip.no { border: var(--divide) solid var(--pencil); }
+  .chip.sel { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .chip b { font: 400 16px/1.2 var(--font-din); }
+  .chip span { font: 400 12.5px/1.3 var(--font-mono); }
+  .chip.no span { color: var(--pencil); }
+  .size { display: grid; gap: 2px; }
+  .size > :first-child { font: 400 24px/1.1 var(--font-din); color: var(--vivid); }
+  .size > :last-child { font-size: 13px; color: var(--fg2); }
+  .legend { padding-top: 0; font-size: 14px; }
+  .ln-summer { color: var(--s-summer); }
+  .ln-monsoon { color: var(--s-monsoon); }
+  .ln-winter { color: var(--s-winter); }
+  .ln-load { color: var(--load); }
+  .scroll { overflow-x: auto; }
+  svg { display: block; width: 100%; min-width: 560px; height: auto; }
+  svg text { font: 11px var(--font-mono); fill: var(--fg2); }
+  svg .gl { stroke: var(--gridline); stroke-width: 1; }
+  svg .axis { stroke: var(--fg2); stroke-width: 1; }
+  /* Season lines differ by dash as well as tone. The drawn attributes are matched, so the script is untouched. */
+  svg path[stroke="var(--s-monsoon)"] { stroke-dasharray: 2 4; stroke-linecap: round; }
+  svg path[stroke="var(--s-winter)"] { stroke-dasharray: 9 3 2 3; }
+  svg path[fill="var(--good-bg)"] { fill: url(#wp-lite); }
+  .ln, .legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid; background: none !important; vertical-align: middle; }
+  .ln-monsoon, .legend i[style*="--s-monsoon"] { border-top-style: dotted; }
+  .ln-winter, .ln-load, .legend i[style*="--s-winter"], .legend i[style*="--load"] { border-top-style: dashed; }
+  .legend i[style*="--s-summer"] { border-color: var(--s-summer); }
+  .legend i[style*="--s-monsoon"] { border-color: var(--s-monsoon); }
+  .legend i[style*="--s-winter"] { border-color: var(--s-winter); }
+  .legend i[style*="--load"] { border-color: var(--load); }
 </style>
 </head>
 <body>
-<div class="mx-auto grid min-h-screen max-w-[1280px] grid-cols-[12px_minmax(0,1fr)_12px] sm:grid-cols-[40px_minmax(0,1fr)_40px]">
-<div class="hatch border-x border-slate-200" aria-hidden="true"></div>
-<div class="grid min-w-0 content-start gap-4 bg-slate-50 px-4 py-6">
-  <header>
-    <h1 class="text-3xl font-bold tracking-tight">Off-Grid Solar Sizer</h1>
-    <p class="mt-1 max-w-prose text-slate-600">Set your load for each hour of the day, pick a season and move the PV and battery sliders. The model runs a 24-hour day: PV feeds the load first and the surplus charges the battery. It checks that the battery carries you through the night and repeats day after day, with no grid.</p>
+<div class="sheet">
+  <header class="head solo">
+    <div class="title">
+      <h1>Off-Grid Solar Sizer</h1>
+      <p class="lede">Set your load for each hour of the day, pick a season and move the PV and battery sliders. The model runs a 24-hour day: PV feeds the load first and the surplus charges the battery. It checks that the battery carries you through the night and repeats day after day, with no grid.</p>
+    </div>
   </header>
-  <div class="hatch -mx-4 h-6 border-y border-slate-200" aria-hidden="true"></div>
 
-  <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Load by hour">
-    <div class="flex items-baseline justify-between gap-2">
-      <h3 class="text-lg font-semibold">Load by hour</h3>
-      <span class="font-mono text-xl font-medium tabular-nums"><span id="loadTotal"></span><small class="ml-1 text-xs text-slate-500">kWh per day</small></span>
+  <main class="cells">
+  <section class="cell" aria-label="Load by hour">
+    <div class="sec">
+    <div class="row">
+      <h3>Load by hour</h3>
+      <span class="big"><span id="loadTotal"></span><small>kWh per day</small></span>
     </div>
-    <div id="hours" class="grid grid-cols-12 gap-1 md:grid-cols-24" style="touch-action:none" aria-label="24 hourly load slots"></div>
-    <div class="flex flex-wrap items-end gap-3">
-      <div class="grid w-32 gap-1.5"><label for="selFrom" class="text-xs font-semibold uppercase tracking-wider text-slate-500">From</label>
-        <select id="selFrom" class="rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base focus:outline-none focus:ring-2 focus:ring-sky-600"></select></div>
-      <div class="grid w-32 gap-1.5"><label for="selTo" class="text-xs font-semibold uppercase tracking-wider text-slate-500">To</label>
-        <select id="selTo" class="rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base focus:outline-none focus:ring-2 focus:ring-sky-600"></select></div>
-      <div class="grid w-32 gap-1.5"><label for="selW" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Load (W)</label>
-        <input type="number" id="selW" min="0" step="50" value="350" inputmode="numeric" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base tabular-nums focus:outline-none focus:ring-2 focus:ring-sky-600"></div>
-      <button type="button" id="apply" class="rounded-md bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-600 focus:ring-offset-2">Apply to selected hours</button>
+    <div id="hours" aria-label="24 hourly load slots"></div>
+    <div class="ctl">
+      <div class="field"><label for="selFrom">From</label><select id="selFrom"></select></div>
+      <div class="field"><label for="selTo">To</label><select id="selTo"></select></div>
+      <div class="field"><label for="selW">Load (W)</label><input type="number" id="selW" min="0" step="50" value="350" inputmode="numeric"></div>
+      <button type="button" id="apply" class="btn on">Apply to selected hours</button>
     </div>
-    <p id="loadHint" class="text-sm text-slate-500"></p>
+    <p id="loadHint" class="hint"></p>
+    </div>
   </section>
+  </main>
 
-  <div class="grid items-start gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
-    <section class="grid min-w-0 gap-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Inputs">
-      <fieldset class="grid gap-1.5">
-        <legend class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">Season</legend>
-        <div id="season" class="grid grid-cols-3 divide-x divide-slate-300 overflow-hidden rounded-md border border-slate-300">
-          <label class="relative cursor-pointer"><input class="peer sr-only" type="radio" name="season" value="summer"><span class="block bg-slate-50 px-1 py-2 text-center font-semibold peer-checked:bg-sky-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-sky-600">Summer<em id="psh-summer" class="block font-mono text-[11px] font-normal not-italic opacity-80"></em></span></label>
-          <label class="relative cursor-pointer"><input class="peer sr-only" type="radio" name="season" value="monsoon" checked><span class="block bg-slate-50 px-1 py-2 text-center font-semibold peer-checked:bg-sky-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-sky-600">Monsoon<em id="psh-monsoon" class="block font-mono text-[11px] font-normal not-italic opacity-80"></em></span></label>
-          <label class="relative cursor-pointer"><input class="peer sr-only" type="radio" name="season" value="winter"><span class="block bg-slate-50 px-1 py-2 text-center font-semibold peer-checked:bg-sky-700 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-sky-600">Winter<em id="psh-winter" class="block font-mono text-[11px] font-normal not-italic opacity-80"></em></span></label>
+  <div class="split">
+    <section class="cell" aria-label="Inputs">
+      <fieldset>
+        <legend>Season</legend>
+        <div id="season">
+          <label><input type="radio" name="season" value="summer"><span>Summer<em id="psh-summer"></em></span></label>
+          <label><input type="radio" name="season" value="monsoon" checked><span>Monsoon<em id="psh-monsoon"></em></span></label>
+          <label><input type="radio" name="season" value="winter"><span>Winter<em id="psh-winter"></em></span></label>
         </div>
       </fieldset>
 
-      <div class="grid gap-1.5">
-        <div class="flex items-baseline justify-between gap-2"><label for="pv" class="text-xs font-semibold uppercase tracking-wider text-slate-500">PV capacity</label><span class="font-mono text-xl font-medium tabular-nums"><span id="pvVal"></span><small class="ml-1 text-xs text-slate-500">kWp</small></span></div>
-        <input type="range" id="pv" min="0.5" max="20" step="0.1" value="4" class="h-7 w-full accent-sky-700">
+      <div class="sec" style="gap:6px">
+        <div class="row"><label for="pv" class="lab">PV capacity</label><span class="big"><span id="pvVal"></span><small>kWp</small></span></div>
+        <input type="range" id="pv" min="0.5" max="20" step="0.1" value="4">
       </div>
 
-      <div class="grid gap-1.5">
-        <div class="flex items-baseline justify-between gap-2"><label for="batt" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Battery capacity</label><span class="font-mono text-xl font-medium tabular-nums"><span id="battVal"></span><small class="ml-1 text-xs text-slate-500">kWh</small></span></div>
-        <input type="range" id="batt" min="1" max="40" step="0.1" value="9.6" class="h-7 w-full accent-sky-700">
-        <p class="text-sm text-slate-500">Nominal pack size. 2 × 48 V 100 Ah is about 9.6 kWh.</p>
+      <div class="sec" style="gap:6px">
+        <div class="row"><label for="batt" class="lab">Battery capacity</label><span class="big"><span id="battVal"></span><small>kWh</small></span></div>
+        <input type="range" id="batt" min="1" max="40" step="0.1" value="9.6">
+        <p class="hint">Nominal pack size. 2 × 48 V 100 Ah is about 9.6 kWh.</p>
       </div>
 
-      <button type="button" id="preset" class="justify-self-start rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-sky-800 hover:border-sky-700">Use current setup (4 kWp, 9.6 kWh)</button>
+      <div><button type="button" id="preset" class="btn">Use current setup (4 kWp, 9.6 kWh)</button></div>
 
-      <details>
-        <summary class="cursor-pointer text-xs font-semibold uppercase tracking-wider text-slate-500">Assumptions</summary>
-        <div class="mt-3 grid gap-2.5 text-sm">
-          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="derate">System efficiency (%)</label><input type="number" id="derate" min="40" max="100" step="1" value="78" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
-          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="dod">Usable battery (%)</label><input type="number" id="dod" min="30" max="100" step="1" value="90" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
-          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="rte">Round-trip efficiency (%)</label><input type="number" id="rte" min="60" max="100" step="1" value="92" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
-          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="p-summer">Summer sun hours</label><input type="number" id="p-summer" min="1" max="8" step="0.1" value="6.1" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
-          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="p-monsoon">Monsoon sun hours</label><input type="number" id="p-monsoon" min="1" max="8" step="0.1" value="4.9" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
-          <div class="grid grid-cols-[1fr_96px] items-center gap-2"><label for="p-winter">Winter sun hours</label><input type="number" id="p-winter" min="1" max="8" step="0.1" value="5.5" class="rounded-md border border-slate-300 px-2 py-1 font-mono tabular-nums"></div>
-          <p class="text-sm text-slate-500">Sun hours are kWh per kWp per day on the panel plane before system losses. Defaults are for Ludhiana, Punjab: PVGIS yield for a south-facing 25° array, averaged over summer (Apr–Jun), monsoon (Jul–Sep) and winter (Nov–Feb), then divided by the 78% system efficiency. Heavy cloud and fog days are not modelled.</p>
+      <details class="sm">
+        <summary>Assumptions</summary>
+        <div class="assume" style="margin-top:10px">
+          <div class="arow"><label for="derate">System efficiency (%)</label><input type="number" id="derate" min="40" max="100" step="1" value="78"></div>
+          <div class="arow"><label for="dod">Usable battery (%)</label><input type="number" id="dod" min="30" max="100" step="1" value="90"></div>
+          <div class="arow"><label for="rte">Round-trip efficiency (%)</label><input type="number" id="rte" min="60" max="100" step="1" value="92"></div>
+          <div class="arow"><label for="p-summer">Summer sun hours</label><input type="number" id="p-summer" min="1" max="8" step="0.1" value="6.1"></div>
+          <div class="arow"><label for="p-monsoon">Monsoon sun hours</label><input type="number" id="p-monsoon" min="1" max="8" step="0.1" value="4.9"></div>
+          <div class="arow"><label for="p-winter">Winter sun hours</label><input type="number" id="p-winter" min="1" max="8" step="0.1" value="5.5"></div>
+          <p class="hint">Sun hours are kWh per kWp per day on the panel plane before system losses. Defaults are for Ludhiana, Punjab: PVGIS yield for a south-facing 25° array, averaged over summer (Apr–Jun), monsoon (Jul–Sep) and winter (Nov–Feb), then divided by the 78% system efficiency. Heavy cloud and fog days are not modelled.</p>
         </div>
       </details>
     </section>
 
-    <div class="grid min-w-0 gap-4">
-      <section id="verdict" class="grid gap-1 rounded-lg border border-slate-200 bg-white p-4" aria-live="polite">
-        <h2 id="vHead" class="text-3xl font-bold leading-tight"></h2>
+    <div class="stack">
+      <section id="verdict" class="cell" aria-live="polite">
+        <h2 id="vHead"></h2>
         <p id="vSub"></p>
-        <div id="vSeasons" class="mt-2 grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2"></div>
+        <div id="vSeasons" class="vseasons"></div>
       </section>
 
-      <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Sizing for the selected season">
-        <h3 id="sizeTitle" class="text-lg font-semibold">What it takes in the selected season</h3>
-        <div class="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
-          <div class="grid gap-0.5"><span id="sNeedB" class="font-mono text-lg tabular-nums"></span><span id="sNeedBl" class="text-xs text-slate-500"></span></div>
-          <div class="grid gap-0.5"><span id="sNeedP" class="font-mono text-lg tabular-nums"></span><span id="sNeedPl" class="text-xs text-slate-500"></span></div>
-          <div class="grid gap-0.5"><span id="sMin" class="font-mono text-lg tabular-nums"></span><span id="sMinl" class="text-xs text-slate-500">Battery low point</span></div>
-          <div class="grid gap-0.5"><span id="sSpill" class="font-mono text-lg tabular-nums"></span><span class="text-xs text-slate-500">PV spilled when battery is full</span></div>
+      <section class="cell" aria-label="Sizing for the selected season">
+        <h3 id="sizeTitle">What it takes in the selected season</h3>
+        <div class="sizes">
+          <div class="size"><span id="sNeedB"></span><span id="sNeedBl"></span></div>
+          <div class="size"><span id="sNeedP"></span><span id="sNeedPl"></span></div>
+          <div class="size"><span id="sMin"></span><span id="sMinl">Battery low point</span></div>
+          <div class="size"><span id="sSpill"></span><span>PV spilled when battery is full</span></div>
         </div>
       </section>
 
-      <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Which combinations work">
-        <h3 class="text-lg font-semibold">Which PV and battery combinations get you off-grid</h3>
-        <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
-          <span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-summer)"></i>Summer limit</span>
-          <span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-monsoon)"></i>Monsoon limit</span>
-          <span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-winter)"></i>Winter limit</span>
-          <span><i class="mr-1.5 inline-block h-3 w-3 rounded-sm border border-green-700 bg-green-100 align-middle"></i>Off-grid zone (selected season)</span>
+      <section class="cell" aria-label="Which combinations work">
+        <h3>Which PV and battery combinations get you off-grid</h3>
+        <div class="legend">
+          <span><i class="ln ln-summer"></i>Summer limit</span>
+          <span><i class="ln ln-monsoon"></i>Monsoon limit</span>
+          <span><i class="ln ln-winter"></i>Winter limit</span>
+          <span><i class="sw sw-lite"></i>Off-grid zone (selected season)</span>
         </div>
-        <div class="overflow-x-auto"><svg id="frontier" viewBox="0 0 720 320" role="img" aria-label="Minimum battery size for each PV size, by season"></svg></div>
-        <p class="max-w-prose text-sm text-slate-500">Each line is the smallest battery that keeps you off-grid at that PV size. Anything above a line works for that season. To be off-grid all year, stay above the highest line. Click or drag on the chart to set both sliders.</p>
+        <div class="scroll"><svg id="frontier" viewBox="0 0 720 320" role="img" aria-label="Minimum battery size for each PV size, by season"></svg></div>
+        <p class="note">Each line is the smallest battery that keeps you off-grid at that PV size. Anything above a line works for that season. To be off-grid all year, stay above the highest line. Click or drag on the chart to set both sliders.</p>
       </section>
 
-      <section class="grid min-w-0 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-label="Hour by hour, all seasons">
-        <h3 id="dayTitle" class="text-lg font-semibold">Hour by hour, all three seasons</h3>
-        <div id="legDay" class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600"></div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">PV output and load (W)</p>
-        <div class="overflow-x-auto"><svg id="day" viewBox="0 0 720 230" role="img" aria-label="Hourly PV output for summer, monsoon and winter, with the load"></svg></div>
-        <p id="legBatt" class="text-xs font-semibold uppercase tracking-wider text-slate-500">Battery charge</p>
-        <div class="overflow-x-auto"><svg id="dayB" viewBox="0 0 720 200" role="img" aria-label="Hourly battery charge for summer, monsoon and winter"></svg></div>
+      <section class="cell" aria-label="Hour by hour, all seasons">
+        <h3 id="dayTitle">Hour by hour, all three seasons</h3>
+        <div id="legDay" class="legend"></div>
+        <p class="lab">PV output and load (W)</p>
+        <div class="scroll"><svg id="day" viewBox="0 0 720 230" role="img" aria-label="Hourly PV output for summer, monsoon and winter, with the load"></svg></div>
+        <p id="legBatt" class="lab">Battery charge</p>
+        <div class="scroll"><svg id="dayB" viewBox="0 0 720 200" role="img" aria-label="Hourly battery charge for summer, monsoon and winter"></svg></div>
       </section>
     </div>
   </div>
 </div>
-<div class="hatch border-x border-slate-200" aria-hidden="true"></div>
-</div>
-
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;min-width:0"><defs><pattern id="wp-lite" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" class="p-bg"/><line x1="0" y1="0" x2="0" y2="9" class="p-ln" stroke-width="1"/></pattern></defs></svg>
 <script>
+
 
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -251,7 +693,7 @@
   function f1(v) { return v.toFixed(1); }
   function kwh(wh) { return f1(wh / 1000); }
 
-  var VBASE = 'grid gap-1 rounded-lg border p-4', VHEAD = 'text-3xl font-bold leading-tight';
+  var VBASE = 'verdict', VHEAD = 'vhead';
   function render() {
     var p = params();
     $('pvVal').textContent = f1(p.pv);
@@ -269,18 +711,18 @@
       var q = k === p.season ? r : sim(p, k, p.pv, p.batt);
       res[k] = q;
       if (q.ok) good.push(SEASONS[k].label); else { all = false; bad.push(SEASONS[k].label); }
-      html += '<div class="chip grid cursor-pointer gap-0.5 rounded-md border bg-white px-3 py-2 ' + (q.ok ? 'border-green-700' : 'border-red-700') + (k === p.season ? ' ring-2 ring-slate-900' : '') + '" data-k="' + k + '">' +
-        '<b class="text-sm font-semibold">' + SEASONS[k].label + '</b><span class="font-mono text-xs ' + (q.ok ? 'text-green-700' : 'text-red-700') + '">' +
+      html += '<div class="chip ' + (q.ok ? 'ok' : 'no') + (k === p.season ? ' sel' : '') + '" data-k="' + k + '">' +
+        '<b>' + SEASONS[k].label + '</b><span>' +
         (q.ok ? 'Off-grid, battery low ' + Math.round(q.minSoc) + '%' : 'Short ' + kwh(q.shortfall) + ' kWh/day') + '</span></div>';
     });
     $('vSeasons').innerHTML = html;
     $('sizeTitle').textContent = 'What it takes in ' + S;
     if (p.load <= 0) {
-      v.className = VBASE + ' border-slate-200 bg-white'; $('vHead').className = VHEAD + ' text-slate-900';
+      v.className = VBASE + ' cell neutral'; $('vHead').className = VHEAD;
       $('vHead').textContent = 'Set a load';
       $('vSub').textContent = 'Enter a load for at least one hour of the day.';
     } else {
-      v.className = VBASE + (all ? ' border-green-700 bg-green-50' : ' border-red-700 bg-red-50'); $('vHead').className = VHEAD + (all ? ' text-green-800' : ' text-red-800');
+      v.className = VBASE + ' cell' + (all ? ' ok' : ' no'); $('vHead').className = VHEAD;
       $('vHead').textContent = all ? 'Off-grid all year' : (good.length ? 'Not off-grid in ' + bad.join(' and ') : 'Not off-grid in any season');
       $('vSub').textContent = r.ok
         ? S + ': ' + kwh(p.load) + ' kWh per day is covered, and the battery refills by day.'
@@ -303,8 +745,8 @@
     drawDay(p, res);
     $('dayTitle').textContent = 'Hour by hour, all three seasons (' + kwh(p.load) + ' kWh used per day)';
     $('legDay').innerHTML = KEYS.map(function (k) {
-      return '<span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--s-' + k + ')"></i>' + SEASONS[k].label + ': ' + kwh(res[k].gen) + ' kWh generated</span>';
-    }).join('') + '<span><i class="mr-1.5 inline-block h-[3px] w-4 align-middle" style="background:var(--load)"></i>Load</span>';
+      return '<span><i style="background:var(--s-' + k + ')"></i>' + SEASONS[k].label + ': ' + kwh(res[k].gen) + ' kWh generated</span>';
+    }).join('') + '<span><i style="background:var(--load)"></i>Load</span>';
     save();
   }
 
@@ -413,15 +855,15 @@
   // hourly load editor
   function hh(n) { return (n < 10 ? '0' : '') + n; }
   function short(w) { return w >= 1000 ? (w / 1000).toFixed(1) + 'k' : String(Math.round(w)); }
-  var HCELL = 'hcell grid grid-rows-[auto_56px_auto] gap-1 rounded border border-slate-200 bg-slate-50 pb-0.5 pt-1 text-center font-mono text-[10px] tabular-nums cursor-pointer select-none';
-  var HSEL = ' border-sky-700 bg-white ring-1 ring-sky-700';
+  var HCELL = 'hcell';
+  var HSEL = ' sel';
   var cells = [], hoursEl = $('hours'), anchor = null;
   (function () {
     var h, c, fromOpts = '', toOpts = '';
     for (h = 0; h < 24; h++) {
       c = document.createElement('div');
       c.className = HCELL; c.setAttribute('data-h', h);
-      c.innerHTML = '<span class="text-slate-900"></span><span class="relative mx-1"><i class="absolute inset-x-0 bottom-0 rounded-t-sm bg-slate-700"></i></span><span class="text-slate-500">' + hh(h) + '</span>';
+      c.innerHTML = '<span class="hv"></span><span class="hb"><i></i></span><span class="hl">' + hh(h) + '</span>';
       hoursEl.appendChild(c); cells.push(c);
       fromOpts += '<option value="' + h + '">' + hh(h) + ':00</option>';
     }
@@ -521,6 +963,7 @@
   restore();
   render();
 })();
+
 
 </script>
 </body>

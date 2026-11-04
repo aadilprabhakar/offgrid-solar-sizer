@@ -21,7 +21,7 @@ The sun hours are for Ludhiana, Punjab: PVGIS yield for a south-facing 25 degree
 Settings are saved in the browser's local storage on the device.
 
 ## Run it
-Open `index.html` in a browser. Styling uses Tailwind CSS from its CDN script (light theme, with the slanted-line gutters from tailwindcss.com), so the page needs an internet connection to look right.
+Open `index.html` in a browser. The page is one self-contained file with all its styles inline, so it works offline. It has light and dark themes that follow the device.
 
 ## Publish on GitHub Pages
 In the repository settings, set Pages to deploy from the `main` branch, root folder. The page is then served at `https://<user>.github.io/offgrid-solar-sizer/`.
